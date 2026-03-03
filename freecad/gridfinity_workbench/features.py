@@ -49,7 +49,7 @@ class FoundationGridfinity:
             )  # ensure the bin is placed correctly before fusing
 
             result_shape = fp.BaseFeature.Shape.fuse(gridfinity_shape)
-            result_shape.transformShape(fp.Placement.inverse().toMatrix(), copy=True)
+            result_shape.transformShape(fp.Placement.inverse().toMatrix(), True)
 
             fp.Shape = result_shape
 
