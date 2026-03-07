@@ -3,17 +3,121 @@
 from __future__ import annotations
 
 import math
+from enum import StrEnum
+from typing import TYPE_CHECKING
 
 import FreeCAD as fc  # noqa: N813
 import Part
 
 from . import const, utils
+from .grid_initial_layout import GridLayoutProperties
+
+if TYPE_CHECKING:
+    from .base_properties import PropertyTuple
 
 unitmm = fc.Units.Quantity("1 mm")
 
 
+class MagnetHoleShapeEnum(StrEnum):
+    """String Enumeration for FreeCAD properties."""
+
+    ROUND = const.HOLE_SHAPES[0]
+    CRUSH_RIBS = const.HOLE_SHAPES[1]
+    HEX = const.HOLE_SHAPES[2]
+
+
+class MagnetHolesProperties(GridLayoutProperties):
+    """Object for magnet hole features."""
+
+    MagnetHoles: bool
+    MagnetHoleDepth: fc.Units.Quantity
+    MagnetHoleDiameter: fc.Units.Quantity
+    MagnetHolesShape: MagnetHoleShapeEnum
+    MagnetHoleChamfer: fc.Units.Quantity
+    MagnetRemoveChannel: bool
+    CrushRibsCount: int
+    CrushRibsWaviness: float
+    MagnetHoleDistanceFromEdge: fc.Units.Quantity
+
+    _properties: PropertyTuple = (
+        (
+            "MagnetHoles",
+            False,
+            "App::PropertyBool",
+            "Gridfinity",
+            "Toggle the magnet holes on or off",
+        ),
+        (
+            "MagnetHoleDepth",
+            const.MAGNET_HOLE_DEPTH,
+            "App::PropertyLength",
+            "GridfinityNonStandard",
+            "Depth of Magnet Holes <br> <br> default = 2.4 mm",
+        ),
+        (
+            "MagnetHoleDiameter",
+            const.MAGNET_HOLE_DIAMETER,
+            "App::PropertyLength",
+            "GridfinityNonStandard",
+            (
+                "Diameter of Magnet Holes. Press fit by default, increase to 6.5 mm if using glue."
+                "For crush ribs, 5.7mm is recommended. <br> <br> default = 6.2 mm"
+            ),
+        ),
+        (
+            "MagnetHolesShape",
+            [x.value for x in MagnetHoleShapeEnum],
+            "App::PropertyEnumeration",
+            "GridfinityNonStandard",
+            (
+                "Shape of magnet holes, change to suit your printers capabilities which might require"
+                "testing."
+                "<br> Round is press fit by default, increase to 6.5 mm if using glue."
+                "<br> <br> Crush ribs are an alternative press fit style."
+                "<br> <br> Hex is a legacy press fit style."
+            ),
+        ),
+        (
+            "MagnetHoleChamfer",
+            0.25,
+            "App::PropertyLength",
+            "GridfinityNonStandard",
+            "The depth at which magnet hole chamfer starts.",
+        ),
+        (
+            "MagnetRemoveChannel",
+            False,
+            "App::PropertyBool",
+            "GridfinityNonStandard",
+            "Toggle the magnet remove channel on or off",
+        ),
+        (
+            "CrushRibsCount",
+            const.CRUSH_RIB_N,
+            "App::PropertyInteger",
+            "GridfinityNonStandard",
+            "Number of crush ribs <br><br> default = 12",
+        ),
+        (
+            "CrushRibsWaviness",
+            (const.CRUSH_RIB_WAVINESS, 0, 1, 0.05),
+            "App::PropertyFloatConstraint",
+            "GridfinityNonStandard",
+            "Waviness of crush ribs, from range [0, 1]",
+        ),
+        (
+            "MagnetHoleDistanceFromEdge",
+            const.MAGNET_HOLE_DISTANCE_FROM_EDGE,
+            "App::PropertyLength",
+            "zzExpertOnly",
+            "Distance of the magnet holes from bin edge <br> <br> default = 8.0 mm",
+            {"read_only": True},
+        ),
+    )
+
+
 def add_properties(
-    obj: fc.DocumentObject,
+    obj: MagnetHolesProperties,
     *,
     remove_channel: bool,
     chamfer: bool,
@@ -22,89 +126,17 @@ def add_properties(
     """Add magnet holes properties to an object.
 
     Args:
-        obj (FreeCAD.DocumentObject): Document object.
+        obj (MagnetHoleObject): Document object.
         remove_channel (bool): Does the object support magnet remove channel.
         chamfer (bool): Does the object support hole chamfer.
         magnet_holes_default (bool): Should magnet holes be enabled by default.
 
     """
     ## Gridfinity Parameters
-    obj.addProperty(
-        "App::PropertyBool",
-        "MagnetHoles",
-        "Gridfinity",
-        "Toggle the magnet holes on or off",
-    ).MagnetHoles = magnet_holes_default
-
-    ## Gridfinity Non Standard Parameters
-    obj.addProperty(
-        "App::PropertyLength",
-        "MagnetHoleDepth",
-        "GridfinityNonStandard",
-        "Depth of Magnet Holes <br> <br> default = 2.4 mm",
-    ).MagnetHoleDepth = const.MAGNET_HOLE_DEPTH
-
-    obj.addProperty(
-        "App::PropertyLength",
-        "MagnetHoleDiameter",
-        "GridfinityNonStandard",
-        (
-            "Diameter of Magnet Holes. Press fit by default, increase to 6.5 mm if using glue."
-            "For crush ribs, 5.7mm is recommended. <br> <br> default = 6.2 mm"
-        ),
-    ).MagnetHoleDiameter = const.MAGNET_HOLE_DIAMETER
-
-    obj.addProperty(
-        "App::PropertyEnumeration",
-        "MagnetHolesShape",
-        "GridfinityNonStandard",
-        (
-            "Shape of magnet holes, change to suit your printers capabilities which might require"
-            "testing."
-            "<br> Round is press fit by default, increase to 6.5 mm if using glue."
-            "<br> <br> Crush ribs are an alternative press fit style."
-            "<br> <br> Hex is a legacy press fit style."
-        ),
-    ).MagnetHolesShape = const.HOLE_SHAPES
-
-    if chamfer:
-        obj.addProperty(
-            "App::PropertyLength",
-            "MagnetHoleChamfer",
-            "GridfinityNonStandard",
-            "The depth at which magnet hole chamfer starts.",
-        ).MagnetHoleChamfer = 0.25
-
-    if remove_channel:
-        obj.addProperty(
-            "App::PropertyBool",
-            "MagnetRemoveChannel",
-            "GridfinityNonStandard",
-            "Toggle the magnet remove channel on or off",
-        ).MagnetRemoveChannel = False
-
-    obj.addProperty(
-        "App::PropertyInteger",
-        "CrushRibsCount",
-        "GridfinityNonStandard",
-        "Number of crush ribs <br><br> default = 12",
-    ).CrushRibsCount = const.CRUSH_RIB_N
-
-    obj.addProperty(
-        "App::PropertyFloatConstraint",
-        "CrushRibsWaviness",
-        "GridfinityNonStandard",
-        "Waviness of crush ribs, from range [0, 1]",
-    ).CrushRibsWaviness = (const.CRUSH_RIB_WAVINESS, 0, 1, 0.05)
-
-    ## Expert Only Parameters
-    obj.addProperty(
-        "App::PropertyLength",
-        "MagnetHoleDistanceFromEdge",
-        "zzExpertOnly",
-        "Distance of the magnet holes from bin edge <br> <br> default = 8.0 mm",
-        read_only=True,
-    ).MagnetHoleDistanceFromEdge = const.MAGNET_HOLE_DISTANCE_FROM_EDGE
+    obj.MagnetHoles = magnet_holes_default
+    obj.MagnetRemoveChannel = remove_channel
+    if not chamfer:
+        obj.MagnetHoleChamfer = 0.0
 
 
 def _crush_ribs(radius: fc.Units.Quantity, *, n: int, beta: float) -> tuple[Part.Face, float]:
@@ -150,6 +182,7 @@ def _hex_shape(radius: fc.Units.Quantity) -> Part.Shape:
     # circle radius
     radius = 2 * radius / math.sqrt(3)
 
+    assert fc.ActiveDocument is not None
     p = fc.ActiveDocument.addObject("Part::RegularPolygon")
     p.Polygon = 6
     p.Circumradius = radius
@@ -161,7 +194,7 @@ def _hex_shape(radius: fc.Units.Quantity) -> Part.Shape:
     return shape
 
 
-def from_obj(obj: fc.DocumentObject) -> Part.Shape:
+def from_obj(obj: MagnetHolesProperties) -> Part.Shape:
     """Create a single magnet hole from object properties."""
     if not obj.MagnetHoles:
         raise ValueError("Object doesn't have magnet holes enables")
@@ -202,7 +235,7 @@ def from_obj(obj: fc.DocumentObject) -> Part.Shape:
     return shape
 
 
-def remove_channel(obj: fc.DocumentObject) -> Part.Shape:
+def remove_channel(obj: MagnetHolesProperties) -> Part.Shape:
     """Create a magnet remove channel shape for four magnets from object properties."""
     x_hole_pos = obj.xGridSize / 2 - obj.MagnetHoleDistanceFromEdge
     y_hole_pos = obj.yGridSize / 2 - obj.MagnetHoleDistanceFromEdge

@@ -10,10 +10,180 @@ import Part
 
 from . import const, utils
 from . import magnet_hole as magnet_hole_module
+from .base_properties import ExpressionTuple, PropertyTuple
+from .grid_initial_layout import GridLayoutProperties
+from .magnet_hole import MagnetHolesProperties
 from .utils import GridfinityLayout
 
 
-def magnet_holes_properties(obj: fc.DocumentObject) -> None:
+class BaseplateBaseProperties(GridLayoutProperties):
+    """Object for the baseplate."""
+
+    BaseProfileHeight: fc.Units.Quantity
+    BaseProfileBottomChamfer: fc.Units.Quantity
+    BaseProfileVerticalSection: fc.Units.Quantity
+    BaseProfileTopChamfer: fc.Units.Quantity
+    BinOuterRadius: fc.Units.Quantity
+    BinVerticalRadius: fc.Units.Quantity
+    BinBottomRadius: fc.Units.Quantity
+    Clearance: fc.Units.Quantity
+    BaseplateTopLedgeWidth: fc.Units.Quantity
+
+    _properties: PropertyTuple = (
+        (
+            "BaseProfileHeight",
+            None,
+            "App::PropertyLength",
+            "ReferenceParameters",
+            "Height of the Gridfinity Base Profile",
+            {"read_only": True},
+        ),
+        (
+            "BaseProfileBottomChamfer",
+            const.BASEPLATE_BOTTOM_CHAMFER,
+            "App::PropertyLength",
+            "zzExpertOnly",
+            "height of chamfer in bottom of bin base profile <br> <br> default = 0.8 mm",
+            {"read_only": True},
+        ),
+        (
+            "BaseProfileVerticalSection",
+            const.BASEPLATE_VERTICAL_SECTION,
+            "App::PropertyLength",
+            "zzExpertOnly",
+            "Height of the vertical section in bin base profile",
+            {"read_only": True},
+        ),
+        (
+            "BaseProfileTopChamfer",
+            const.BASEPLATE_TOP_CHAMFER,
+            "App::PropertyLength",
+            "zzExpertOnly",
+            "Height of the top chamfer in the bin base profile",
+            {"read_only": True},
+        ),
+        (
+            "BinOuterRadius",
+            const.BASEPLATE_OUTER_RADIUS,
+            "App::PropertyLength",
+            "zzExpertOnly",
+            "Outer radius of the bin",
+            {"read_only": True},
+        ),
+        (
+            "BinVerticalRadius",
+            const.BASEPLATE_VERTICAL_RADIUS,
+            "App::PropertyLength",
+            "zzExpertOnly",
+            "Radius of the base profile Vertical section",
+            {"read_only": True},
+        ),
+        (
+            "BinBottomRadius",
+            const.BASEPLATE_BOTTOM_RADIUS,
+            "App::PropertyLength",
+            "zzExpertOnly",
+            "bottom of bin corner radius",
+            {"read_only": True},
+        ),
+        (
+            "Clearance",
+            const.CLEARANCE,
+            "App::PropertyLength",
+            "zzExpertOnly",
+            "The Clearance between bin and baseplate <br> <br>default = 0.25 mm",
+        ),
+        (
+            "BaseplateTopLedgeWidth",
+            const.BASEPLATE_TOP_LEDGE_WIDTH,
+            "App::PropertyLength",
+            "zzExpertOnly",
+            "Top ledge of baseplate, doubled between grids <br> <br> default = 0.4 mm",
+            {"read_only": True},
+        ),
+    )
+    _expressions: ExpressionTuple = (
+        (
+            "BaseProfileHeight",
+            "BaseProfileBottomChamfer + BaseProfileVerticalSection + BaseProfileTopChamfer",
+        ),
+    )
+
+
+def base_values_properties(obj: BaseplateBaseProperties) -> None:
+    """Create BinBaseValues.
+
+    Args:
+        obj (BaseplateBaseObject): Document object
+
+    """
+
+
+class BaseplateSolidProperties(BaseplateBaseProperties):
+    """Object for the solid which the baseplate is cut from."""
+
+    TotalHeight: fc.Units.Quantity
+
+    _properties: PropertyTuple = (
+        (
+            "TotalHeight",
+            None,
+            "App::PropertyLength",
+            "ReferenceDimensions",
+            "total height of the bin",
+            {"read_only": True},
+        ),
+    )
+
+
+def solid_shape_properties(obj: BaseplateSolidProperties) -> None:
+    """Make solid which the baseplate is cut from."""
+
+
+class BaseplateMagnetHolesProperties(MagnetHolesProperties):
+    """Object for magnet hole features on the baseplate."""
+
+    MagnetEdgeThickness: fc.Units.Quantity
+    MagnetBase: fc.Units.Quantity
+    MagnetBaseHole: fc.Units.Quantity
+    BaseThickness: fc.Units.Quantity
+
+    _properties: PropertyTuple = (
+        (
+            "MagnetEdgeThickness",
+            const.MAGNET_EDGE_THICKNESS,
+            "App::PropertyLength",
+            "GridfinityNonStandard",
+            "Thickness of edge around magnets <br> <br> default = 1.2 mm",
+        ),
+        (
+            "MagnetBase",
+            const.MAGNET_BASE,
+            "App::PropertyLength",
+            "GridfinityNonStandard",
+            "Thickness of base under the magnets <br> <br> default = 0.4 mm",
+        ),
+        (
+            "MagnetBaseHole",
+            const.MAGNET_BASE_HOLE,
+            "App::PropertyLength",
+            "GridfinityNonStandard",
+            "Diameter of the hole at the bottom of the magnet cutout"
+            "<br> Set to zero to make disapear"
+            "<br> <br> default = 3 mm",
+        ),
+        (
+            "BaseThickness",
+            const.BASE_THICKNESS,
+            "App::PropertyLength",
+            "Hidden",
+            "Thickness of base under the normal baseplate  profile <br> <br> default = 6.4 mm",
+            {"hidden": True},
+        ),
+    )
+
+
+def magnet_holes_properties(obj: BaseplateMagnetHolesProperties) -> None:
     """Make baseplate magnet holes."""
     magnet_hole_module.add_properties(
         obj,
@@ -23,40 +193,8 @@ def magnet_holes_properties(obj: fc.DocumentObject) -> None:
     )
     obj.setEditorMode("MagnetHoles", ("ReadOnly", "Hidden"))
 
-    obj.addProperty(
-        "App::PropertyLength",
-        "MagnetEdgeThickness",
-        "NonStandard",
-        "Thickness of edge around magnets <br> <br> default = 1.2 mm",
-    ).MagnetEdgeThickness = const.MAGNET_EDGE_THICKNESS
 
-    obj.addProperty(
-        "App::PropertyLength",
-        "MagnetBase",
-        "NonStandard",
-        "Thickness of base under the magnets <br> <br> default = 0.4 mm",
-    ).MagnetBase = const.MAGNET_BASE
-
-    obj.addProperty(
-        "App::PropertyLength",
-        "MagnetBaseHole",
-        "NonStandard",
-        "Diameter of the hole at the bottom of the magnet cutout"
-        "<br> Set to zero to make disapear"
-        "<br> <br> default = 3 mm",
-    ).MagnetBaseHole = const.MAGNET_BASE_HOLE
-
-    ## Gridfinity Hidden Properties
-    obj.addProperty(
-        "App::PropertyLength",
-        "BaseThickness",
-        "Hidden",
-        "Thickness of base under the normal baseplate  profile <br> <br> default = 6.4 mm",
-        hidden=True,
-    ).BaseThickness = const.BASE_THICKNESS
-
-
-def make_magnet_holes(obj: fc.DocumentObject, layout: GridfinityLayout) -> Part.Shape:
+def make_magnet_holes(obj: BaseplateMagnetHolesProperties, layout: GridfinityLayout) -> Part.Shape:
     """Create magentholes for a baseplate."""
     x_hole_pos = obj.xGridSize / 2 - obj.MagnetHoleDistanceFromEdge
     y_hole_pos = obj.yGridSize / 2 - obj.MagnetHoleDistanceFromEdge
@@ -79,27 +217,39 @@ def make_magnet_holes(obj: fc.DocumentObject, layout: GridfinityLayout) -> Part.
     return shape.translate(fc.Vector(-obj.xLocationOffset, -obj.yLocationOffset))
 
 
-def screw_bottom_chamfer_properties(obj: fc.DocumentObject) -> None:
+class BaseplateBottomHolesProperties(BaseplateSolidProperties, BaseplateMagnetHolesProperties):
+    """Object for holes in the bottom of the baseplate."""
+
+    ScrewHoleDiameter: fc.Units.Quantity
+    MagnetBottomChamfer: fc.Units.Quantity
+
+    _properties: PropertyTuple = (
+        (
+            "ScrewHoleDiameter",
+            const.SCREW_HOLE_DIAMETER,
+            "App::PropertyLength",
+            "GridfinityNonStandard",
+            "Diameter of screw holes inside magnet holes <br> <br> default = 3 mm",
+        ),
+        (
+            "MagnetBottomChamfer",
+            const.MAGNET_BOTTOM_CHAMFER,
+            "App::PropertyLength",
+            "zzExpertOnly",
+            "Chamfer of screwholes on the bottom of the baseplate, allows the use of countersuck"
+            "m3 screws in the bottom up to a bin <br> <br> default = 3 mm",
+        ),
+    )
+
+
+def screw_bottom_chamfer_properties(obj: BaseplateBottomHolesProperties) -> None:
     """Create Baseplate Connection Holes."""
-    ## Gridfinity Non Standard Parameters
-    obj.addProperty(
-        "App::PropertyLength",
-        "ScrewHoleDiameter",
-        "NonStandard",
-        "Diameter of screw holes inside magnet holes <br> <br> default = 3 mm",
-    ).ScrewHoleDiameter = const.SCREW_HOLE_DIAMETER
-
-    ## Gridfinity Expert Only Parameters
-    obj.addProperty(
-        "App::PropertyLength",
-        "MagnetBottomChamfer",
-        "zzExpertOnly",
-        "Chamfer of screwholes on the bottom of the baseplate, allows the use of countersuck"
-        "m3 screws in the bottom up to a bin <br> <br> default = 3 mm",
-    ).MagnetBottomChamfer = const.MAGNET_BOTTOM_CHAMFER
+    pass
 
 
-def make_screw_bottom_chamfer(obj: fc.DocumentObject, layout: GridfinityLayout) -> Part.Shape:
+def make_screw_bottom_chamfer(
+    obj: BaseplateBottomHolesProperties, layout: GridfinityLayout
+) -> Part.Shape:
     """Create screw chamfer for a baseplate."""
     x_hole_pos = obj.xGridSize / 2 - obj.MagnetHoleDistanceFromEdge
     y_hole_pos = obj.yGridSize / 2 - obj.MagnetHoleDistanceFromEdge
@@ -118,18 +268,31 @@ def make_screw_bottom_chamfer(obj: fc.DocumentObject, layout: GridfinityLayout) 
     )
 
 
-def connection_holes_properties(obj: fc.DocumentObject) -> None:
+class BaseplateConnectionHolesProperties(BaseplateBottomHolesProperties):
+    """Object for connection holes on the baseplate."""
+
+    ConnectionHoleDiameter: fc.Units.Quantity
+
+    _properties: PropertyTuple = (
+        (
+            "ConnectionHoleDiameter",
+            const.CONNECTION_HOLE_DIAMETER,
+            "App::PropertyLength",
+            "GridfinityNonStandard",
+            "Holes on the sides to connect multiple baseplates together <br> <br> default = 3.2 mm",
+        ),
+    )
+
+
+def connection_holes_properties(obj: BaseplateConnectionHolesProperties) -> None:
     """Create Baseplate Connection Holes."""
     ## Gridfinity Non Standard Parameters
-    obj.addProperty(
-        "App::PropertyLength",
-        "ConnectionHoleDiameter",
-        "NonStandard",
-        "Holes on the sides to connect multiple baseplates together <br> <br> default = 3.2 mm",
-    ).ConnectionHoleDiameter = const.CONNECTION_HOLE_DIAMETER
 
 
-def make_connection_holes(obj: fc.DocumentObject, layout: GridfinityLayout) -> Part.Shape:
+def make_connection_holes(
+    obj: BaseplateConnectionHolesProperties,
+    layout: GridfinityLayout,
+) -> Part.Shape:
     """Create connection holes for a baseplate."""
     c1 = Part.makeCylinder(
         obj.ConnectionHoleDiameter / 2,
@@ -179,7 +342,33 @@ def make_connection_holes(obj: fc.DocumentObject, layout: GridfinityLayout) -> P
     return fuse_total
 
 
-def _center_cut_face(obj: fc.DocumentObject) -> Part.Face:
+class BaseplateCentreCutProperties(BaseplateBottomHolesProperties):
+    """Object for the center cutout in the baseplate."""
+
+    SmallFillet: fc.Units.Quantity
+
+    _properties: PropertyTuple = (
+        (
+            "SmallFillet",
+            const.BASEPLATE_SMALL_FILLET,
+            "App::PropertyLength",
+            "GridfinityNonStandard",
+            "Fillets of the main cutout in each grid of the baseplate <br> <br> default = 1 mm",
+        ),
+    )
+
+
+class BaseplateProperties(BaseplateCentreCutProperties):
+    """Object for the baseplate."""
+
+    _properties: PropertyTuple = ()
+
+
+def center_cut_properties(obj: BaseplateCentreCutProperties) -> None:
+    """Cut out the  center section of each baseplate grid."""
+
+
+def _center_cut_face(obj: BaseplateCentreCutProperties) -> Part.Face:
     """Create wire for the baseplate center cut."""
     x_inframedis = (
         obj.xGridSize / 2
@@ -277,17 +466,7 @@ def _center_cut_face(obj: fc.DocumentObject) -> Part.Face:
     return utils.curve_to_face([l1, ar1, l2, ar2, l3, ar3, l4, l5, l6])
 
 
-def center_cut_properties(obj: fc.DocumentObject) -> None:
-    """Cut out the  center section of each baseplate grid."""
-    obj.addProperty(
-        "App::PropertyLength",
-        "SmallFillet",
-        "NonStandard",
-        "Fillets of the main cutout in each grid of the baseplate <br> <br> default = 1 mm",
-    ).SmallFillet = const.BASEPLATE_SMALL_FILLET
-
-
-def make_center_cut(obj: fc.DocumentObject, layout: GridfinityLayout) -> Part.Shape:
+def make_center_cut(obj: BaseplateCentreCutProperties, layout: GridfinityLayout) -> Part.Shape:
     """Create baseplate center cutout."""
     face = _center_cut_face(obj)
 
@@ -305,106 +484,8 @@ def make_center_cut(obj: fc.DocumentObject, layout: GridfinityLayout) -> Part.Sh
     )
 
 
-def base_values_properties(obj: fc.DocumentObject) -> None:
-    """Create BinBaseValues.
-
-    Args:
-        obj (FreeCAD.DocumentObject): Document object
-
-    """
-    ## Reference Parameters
-    obj.addProperty(
-        "App::PropertyLength",
-        "BaseProfileHeight",
-        "ReferenceParameters",
-        "Height of the Gridfinity Base Profile",
-        read_only=True,
-    )
-
-    ## Expert Only Parameters
-    obj.addProperty(
-        "App::PropertyLength",
-        "BaseProfileBottomChamfer",
-        "zzExpertOnly",
-        "height of chamfer in bottom of bin base profile <br> <br> default = 0.8 mm",
-        read_only=True,
-    ).BaseProfileBottomChamfer = const.BASEPLATE_BOTTOM_CHAMFER
-
-    obj.addProperty(
-        "App::PropertyLength",
-        "BaseProfileVerticalSection",
-        "zzExpertOnly",
-        "Height of the vertical section in bin base profile",
-        read_only=True,
-    ).BaseProfileVerticalSection = const.BASEPLATE_VERTICAL_SECTION
-
-    obj.addProperty(
-        "App::PropertyLength",
-        "BaseProfileTopChamfer",
-        "zzExpertOnly",
-        "Height of the top chamfer in the bin base profile",
-        read_only=True,
-    ).BaseProfileTopChamfer = const.BASEPLATE_TOP_CHAMFER
-
-    obj.addProperty(
-        "App::PropertyLength",
-        "BinOuterRadius",
-        "zzExpertOnly",
-        "Outer radius of the bin",
-        read_only=True,
-    ).BinOuterRadius = const.BASEPLATE_OUTER_RADIUS
-
-    obj.addProperty(
-        "App::PropertyLength",
-        "BinVerticalRadius",
-        "zzExpertOnly",
-        "Radius of the base profile Vertical section",
-        read_only=True,
-    ).BinVerticalRadius = const.BASEPLATE_VERTICAL_RADIUS
-
-    obj.addProperty(
-        "App::PropertyLength",
-        "BinBottomRadius",
-        "zzExpertOnly",
-        "bottom of bin corner radius",
-        read_only=True,
-    ).BinBottomRadius = const.BASEPLATE_BOTTOM_RADIUS
-
-    obj.addProperty(
-        "App::PropertyLength",
-        "Clearance",
-        "zzExpertOnly",
-        "The Clearance between bin and baseplate <br> <br>default = 0.25 mm",
-    ).Clearance = const.CLEARANCE
-
-    obj.addProperty(
-        "App::PropertyLength",
-        "BaseplateTopLedgeWidth",
-        "zzExpertOnly",
-        "Top ledge of baseplate, doubled between grids <br> <br> default = 0.4 mm",
-        read_only=True,
-    ).BaseplateTopLedgeWidth = const.BASEPLATE_TOP_LEDGE_WIDTH
-
-    ## Expressions
-    obj.setExpression(
-        "BaseProfileHeight",
-        "BaseProfileBottomChamfer + BaseProfileVerticalSection + BaseProfileTopChamfer",
-    )
-
-
-def solid_shape_properties(obj: fc.DocumentObject) -> None:
-    """Make solid which the baseplate is cut from."""
-    obj.addProperty(
-        "App::PropertyLength",
-        "TotalHeight",
-        "ReferenceDimensions",
-        "total height of the bin",
-        read_only=True,
-    )
-
-
 def make_solid_shape(
-    obj: fc.DocumentObject,
+    obj: BaseplateProperties,
     baseplate_outside_shape: Part.Wire,
     *,
     baseplate_type: str,
@@ -412,7 +493,7 @@ def make_solid_shape(
     """Create solid which baseplate is cut from.
 
     Args:
-        obj (FreeCAD.DocumentObject): Document object.
+        obj (BaseplateSolidObject): Document object.
         baseplate_outside_shape (Part.Wire): outside profile of the baseplate shape
         baseplate_type (str): type of baseplate being generated
 

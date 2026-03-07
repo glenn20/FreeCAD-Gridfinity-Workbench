@@ -1,121 +1,153 @@
 """Makes grid layouts, calculates total width properties."""
 
+from enum import StrEnum
+
 import FreeCAD as fc  # noqa: N813
 
 from . import const
+from .base_properties import BaseProperties, ExpressionTuple, PropertyTuple
 
 
-def _location_properties(obj: fc.DocumentObject) -> None:
-    """Properties used by all gridfinity objects."""
-    obj.addProperty(
-        "App::PropertyEnumeration",
-        "GenerationLocation",
-        "Gridfinity",
-        "Location of the bin. Change depending on how you want to customize",
-    ).GenerationLocation = ["Positive from Origin", "Centered at Origin"]
+class GenerationLocationEnum(StrEnum):
+    """String Enumeration for FreeCAD properties."""
 
-    obj.addProperty(
-        "App::PropertyLength",
-        "xLocationOffset",
-        "ShouldBeHidden",
-        "changing bin location in the x direction",
-        hidden=True,
+    POSITIVE_FROM_ORIGIN = "Positive from Origin"
+    CENTERED_AT_ORIGIN = "Centered at Origin"
+
+
+class GridLayoutProperties(BaseProperties):
+    """Grid Layout Properties."""
+
+    GenerationLocation: GenerationLocationEnum
+    xLocationOffset: fc.Units.Quantity
+    yLocationOffset: fc.Units.Quantity
+    xTotalWidth: fc.Units.Quantity
+    yTotalWidth: fc.Units.Quantity
+    xGridSize: fc.Units.Quantity
+    yGridSize: fc.Units.Quantity
+    Baseplate: bool
+
+    # A class variable that defines the properties' values and types.
+    _properties: PropertyTuple = (
+        # User-facing properties
+        (
+            "GenerationLocation",
+            [x.value for x in GenerationLocationEnum],
+            "App::PropertyEnumeration",
+            "Gridfinity",
+            "Location of the bin. Change depending on how you want to customize",
+        ),
+        (
+            "xGridSize",
+            const.X_GRID_SIZE,
+            "App::PropertyLength",
+            "zzExpertOnly",
+            "Size of each grid in x direction <br> <br> default = 42 mm",
+        ),
+        (
+            "yGridSize",
+            const.Y_GRID_SIZE,
+            "App::PropertyLength",
+            "zzExpertOnly",
+            "Size of each grid in y direction <br> <br> default = 42 mm",
+        ),
+        # Computed (read-only) properties
+        (
+            "xTotalWidth",
+            42,
+            "App::PropertyLength",
+            "ReferenceParameters",
+            "total width of Gridfinity object in x direction",
+            {"read_only": True},
+        ),
+        (
+            "yTotalWidth",
+            42,
+            "App::PropertyLength",
+            "ReferenceParameters",
+            "total width of Gridfinity object in y direction",
+            {"read_only": True},
+        ),
+        # Hidden properties
+        (
+            "Baseplate",
+            False,
+            "App::PropertyBool",
+            "ShouldBeHidden",
+            "Is the Gridfinity Object a baseplate",
+            {"hidden": True},
+        ),
+        (
+            "xLocationOffset",
+            0,
+            "App::PropertyLength",
+            "ShouldBeHidden",
+            "changing bin location in the x direction",
+            {"hidden": True},
+        ),
+        (
+            "yLocationOffset",
+            0,
+            "App::PropertyLength",
+            "ShouldBeHidden",
+            "changing bin location in the y direction",
+            {"hidden": True},
+        ),
     )
 
-    obj.addProperty(
-        "App::PropertyLength",
-        "yLocationOffset",
-        "ShouldBeHidden",
-        "changing bin location in the y direction",
-        hidden=True,
+
+class GridRectangleLayoutProperties(GridLayoutProperties):
+    """Grid Rectangle Layout Properties."""
+
+    xGridUnits: float
+    yGridUnits: float
+
+    # A class variable that defines the properties' values and types.
+    _properties: PropertyTuple = (
+        # User-facing properties
+        (
+            "xGridUnits",
+            const.X_GRID_UNITS,
+            "App::PropertyFloat",
+            "Gridfinity",
+            "Number of grid units in the x direction <br> <br> default = 2",
+        ),
+        (
+            "yGridUnits",
+            const.Y_GRID_UNITS,
+            "App::PropertyFloat",
+            "Gridfinity",
+            "Number of grid units in the y direction <br> <br> default = 2",
+        ),
+    )
+    _expressions: ExpressionTuple = (
+        (
+            "xTotalWidth",
+            "xGridUnits * xGridSize - (Baseplate == 1 ? 0 mm : 2 * Clearance)",
+        ),
+        (
+            "yTotalWidth",
+            "yGridUnits * yGridSize - (Baseplate == 1 ? 0 mm : 2 * Clearance)",
+        ),
     )
 
 
-def _total_width_properties(obj: fc.DocumentObject) -> None:
-    """Total Width Properties."""
-    obj.addProperty(
-        "App::PropertyLength",
-        "xTotalWidth",
-        "ReferenceParameters",
-        "total width of Gridfinity object in x direction",
-        read_only=True,
-    )
-
-    obj.addProperty(
-        "App::PropertyLength",
-        "yTotalWidth",
-        "ReferenceParameters",
-        "total width of Gridfinity object in y direction",
-        read_only=True,
-    )
-
-
-def _grid_size_properties(obj: fc.DocumentObject) -> None:
-    """Grid Size Properties."""
-    obj.addProperty(
-        "App::PropertyLength",
-        "xGridSize",
-        "zzExpertOnly",
-        "Size of each grid in x direction <br> <br> default = 42 mm",
-    ).xGridSize = const.X_GRID_SIZE
-
-    obj.addProperty(
-        "App::PropertyLength",
-        "yGridSize",
-        "zzExpertOnly",
-        "Size of each grid in y direction <br> <br> default = 42 mm",
-    ).yGridSize = const.Y_GRID_SIZE
-
-
-def rectangle_layout_properties(obj: fc.DocumentObject, *, baseplate_default: bool) -> None:
+def rectangle_layout_properties(
+    obj: GridRectangleLayoutProperties, *, baseplate_default: bool
+) -> None:
     """Create Rectangle Layout.
 
     Args:
-        obj (FreeCAD.DocumentObject): Document object
-        baseplate_default (Bool): is Gridfinity Object baseplate
+        obj (GridRectangleLayoutProperties): Grid layout object
+        baseplate_default (bool): is Gridfinity Object baseplate
 
     """
-    _location_properties(obj)
-    _total_width_properties(obj)
-    _grid_size_properties(obj)
-
-    ## Standard Gridfinity Parameters
-    obj.addProperty(
-        "App::PropertyFloat",
-        "xGridUnits",
-        "Gridfinity",
-        "Number of grid units in the x direction <br> <br> default = 2",
-    ).xGridUnits = const.X_GRID_UNITS
-    obj.addProperty(
-        "App::PropertyFloat",
-        "yGridUnits",
-        "Gridfinity",
-        "Number of grid units in the y direction <br> <br> default = 2",
-    ).yGridUnits = const.Y_GRID_UNITS
-
-    ## Hidden Properties
-    obj.addProperty(
-        "App::PropertyBool",
-        "Baseplate",
-        "ShouldBeHidden",
-        "Is the Gridfinity Object a baseplate",
-        hidden=True,
-    ).Baseplate = baseplate_default
-
-    ## Expressions
-    obj.setExpression(
-        "xTotalWidth",
-        "xGridUnits * xGridSize - (Baseplate == 1 ? 0mm : 2 * Clearance)",
-    )
-    obj.setExpression(
-        "yTotalWidth",
-        "yGridUnits * yGridSize - (Baseplate == 1 ? 0mm : 2 * Clearance)",
-    )
+    obj.Baseplate = baseplate_default
 
 
-def make_rectangle_layout(obj: fc.DocumentObject) -> list[list[bool]]:
+def make_rectangle_layout(obj: GridRectangleLayoutProperties) -> list[list[bool]]:
     """Generate Rectangle layout and calculate relevant parameters."""
-    if obj.GenerationLocation == "Centered at Origin":
+    if obj.GenerationLocation == GenerationLocationEnum.CENTERED_AT_ORIGIN:
         if obj.Baseplate:
             obj.xLocationOffset = obj.xTotalWidth / 2
             obj.yLocationOffset = obj.yTotalWidth / 2
@@ -123,43 +155,29 @@ def make_rectangle_layout(obj: fc.DocumentObject) -> list[list[bool]]:
             obj.xLocationOffset = obj.xTotalWidth / 2 + obj.Clearance
             obj.yLocationOffset = obj.yTotalWidth / 2 + obj.Clearance
     else:
-        obj.xLocationOffset = 0
-        obj.yLocationOffset = 0
+        obj.xLocationOffset.Value = 0
+        obj.yLocationOffset.Value = 0
 
     return [[True] * int(obj.yGridUnits + 1e-6) for x in range(int(obj.xGridUnits + 1e-6))]
 
 
-def custom_shape_layout_properties(obj: fc.DocumentObject, *, baseplate_default: bool) -> None:
+def custom_shape_layout_properties(obj: GridLayoutProperties, *, baseplate_default: bool) -> None:
     """Add relevant properties for a custom shape gridfinity object.
 
     Args:
-        obj (FreeCAD.DocumentObject): Document object
+        obj (GridLayoutObject): Grid layout object
         baseplate_default (Bool): is Gridfinity Object baseplate
 
     """
-    _total_width_properties(obj)
-    _grid_size_properties(obj)
-
-    _location_properties(obj)
+    obj.Baseplate = baseplate_default
     obj.setEditorMode("GenerationLocation", 2)
 
-    ## Standard Gridfinity Parameters
 
-    ## Hidden Properties
-    obj.addProperty(
-        "App::PropertyBool",
-        "Baseplate",
-        "ShouldBeHidden",
-        "Is the Gridfinity Object a baseplate",
-        hidden=True,
-    ).Baseplate = baseplate_default
-
-
-def make_custom_shape_layout(obj: fc.DocumentObject, layout: list[list[bool]]) -> None:
+def make_custom_shape_layout(obj: GridLayoutProperties, layout: list[list[bool]]) -> None:
     """Calculate values for custom shape.
 
     Args:
-        obj (FreeCAD.DocumentObject): Document object
+        obj (GridLayoutObject): Grid layout object
         layout (list[list[bool]]): Layout of the gridfinity grid.
 
     """

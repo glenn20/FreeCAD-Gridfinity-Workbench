@@ -3,6 +3,8 @@
 # ruff: noqa: D101, D102, D107
 
 from abc import abstractmethod
+from re import L
+from tkinter import Label
 
 import FreeCAD as fc  # noqa: N813
 import Part
@@ -80,13 +82,14 @@ class FullBin(FoundationGridfinity):
 
     def __init__(
         self,
-        obj: fc.DocumentObject,
+        obj: feat.BinBlankObject,
         *,
         height_units_default: int,
         stacking_lip_default: bool,
     ) -> None:
         super().__init__(obj)
 
+        feat.BinBlankObject.init_properties(obj)
         grid_initial_layout.rectangle_layout_properties(obj, baseplate_default=False)
         feat.bin_solid_mid_section_properties(
             obj,
@@ -98,7 +101,7 @@ class FullBin(FoundationGridfinity):
         feat.bin_bottom_holes_properties(obj, magnet_holes_default=const.MAGNET_HOLES)
         feat.bin_base_values_properties(obj)
 
-    def generate_gridfinity_shape(self, obj: fc.DocumentObject) -> Part.Shape:
+    def generate_gridfinity_shape(self, obj: feat.BinBlankObject) -> Part.Shape:
         layout = grid_initial_layout.make_rectangle_layout(obj)
 
         bin_outside_shape = utils.create_rounded_rectangle(
@@ -137,7 +140,7 @@ class FullBin(FoundationGridfinity):
 
 
 class BinBlank(FullBin):
-    def __init__(self, obj: fc.DocumentObject) -> None:
+    def __init__(self, obj: feat.BinBlankObject) -> None:
         super().__init__(
             obj,
             height_units_default=const.HEIGHT_UNITS,
@@ -146,7 +149,7 @@ class BinBlank(FullBin):
 
 
 class BinBase(FullBin):
-    def __init__(self, obj: fc.DocumentObject) -> None:
+    def __init__(self, obj: feat.BinBlankObject) -> None:
         super().__init__(
             obj,
             height_units_default=1,
@@ -165,15 +168,16 @@ class StorageBin(FoundationGridfinity):
 
     def __init__(
         self,
-        obj: fc.DocumentObject,
+        obj: feat.StorageBinObject,
         *,
         x_div_default: int,
         y_div_default: int,
-        label_style_default: str,
+        label_style_default: feat.LabelShelfStyleEnum,
         scoop_default: bool,
     ) -> None:
         super().__init__(obj)
 
+        feat.StorageBinObject.init_properties(obj)
         grid_initial_layout.rectangle_layout_properties(obj, baseplate_default=False)
         feat.bin_solid_mid_section_properties(
             obj,
@@ -189,7 +193,10 @@ class StorageBin(FoundationGridfinity):
 
         obj.setExpression("UsableHeight", "TotalHeight - HeightUnitValue")
 
-    def generate_gridfinity_shape(self, obj: fc.DocumentObject) -> Part.Shape:
+    def generate_gridfinity_shape(
+        self,
+        obj: feat.StorageBinObject,
+    ) -> Part.Shape:
         layout = grid_initial_layout.make_rectangle_layout(obj)
 
         bin_outside_shape = utils.create_rounded_rectangle(
@@ -235,31 +242,32 @@ class StorageBin(FoundationGridfinity):
 
 
 class SimpleStorageBin(StorageBin):
-    def __init__(self, obj: fc.DocumentObject) -> None:
+    def __init__(self, obj: feat.StorageBinObject) -> None:
         super().__init__(
             obj,
             x_div_default=0,
             y_div_default=0,
-            label_style_default="Off",
+            label_style_default=feat.LabelShelfStyleEnum.OFF,
             scoop_default=False,
         )
 
 
 class PartsBin(StorageBin):
-    def __init__(self, obj: fc.DocumentObject) -> None:
+    def __init__(self, obj: feat.StorageBinObject) -> None:
         super().__init__(
             obj,
             x_div_default=const.X_DIVIDERS,
             y_div_default=const.Y_DIVIDERS,
-            label_style_default="Standard",
+            label_style_default=feat.LabelShelfStyleEnum.STANDARD,
             scoop_default=const.SCOOP,
         )
 
 
 class EcoBin(FoundationGridfinity):
-    def __init__(self, obj: fc.DocumentObject) -> None:
+    def __init__(self, obj: feat.EcoBinObject) -> None:
         super().__init__(obj)
 
+        feat.EcoBinObject.init_properties(obj)
         grid_initial_layout.rectangle_layout_properties(obj, baseplate_default=False)
         feat.bin_solid_mid_section_properties(
             obj,
@@ -269,13 +277,13 @@ class EcoBin(FoundationGridfinity):
         feat.stacking_lip_properties(obj, stacking_lip_default=const.STACKING_LIP)
         feat.bin_bottom_holes_properties(obj, magnet_holes_default=False)
         feat.bin_base_values_properties(obj)
-        feat.label_shelf_properties(obj, label_style_default="Standard")
+        feat.label_shelf_properties(obj, label_style_default=feat.LabelShelfStyleEnum.STANDARD)
         feat.eco_compartments_properties(obj)
         feat.scoop_properties(obj, scoop_default=False)
 
         obj.setExpression("UsableHeight", "TotalHeight - HeightUnitValue")
 
-    def generate_gridfinity_shape(self, obj: fc.DocumentObject) -> Part.Shape:
+    def generate_gridfinity_shape(self, obj: feat.EcoBinObject) -> Part.Shape:
         layout = grid_initial_layout.make_rectangle_layout(obj)
 
         bin_outside_shape = utils.create_rounded_rectangle(
@@ -336,14 +344,15 @@ class EcoBin(FoundationGridfinity):
 
 
 class Baseplate(FoundationGridfinity):
-    def __init__(self, obj: fc.DocumentObject) -> None:
+    def __init__(self, obj: feat.BaseplateRectObject) -> None:
         super().__init__(obj)
 
+        feat.BaseplateRectObject.init_properties(obj)
         grid_initial_layout.rectangle_layout_properties(obj, baseplate_default=True)
         baseplate_feat.solid_shape_properties(obj)
         baseplate_feat.base_values_properties(obj)
 
-    def generate_gridfinity_shape(self, obj: fc.DocumentObject) -> Part.Shape:
+    def generate_gridfinity_shape(self, obj: feat.BaseplateRectObject) -> Part.Shape:
         layout = grid_initial_layout.make_rectangle_layout(obj)
 
         baseplate_outside_shape = utils.create_rounded_rectangle(
@@ -368,16 +377,17 @@ class Baseplate(FoundationGridfinity):
 
 
 class MagnetBaseplate(FoundationGridfinity):
-    def __init__(self, obj: fc.DocumentObject) -> None:
+    def __init__(self, obj: feat.BaseplateRectObject) -> None:
         super().__init__(obj)
 
+        feat.BaseplateRectObject.init_properties(obj)
         grid_initial_layout.rectangle_layout_properties(obj, baseplate_default=True)
         baseplate_feat.solid_shape_properties(obj)
         baseplate_feat.base_values_properties(obj)
         baseplate_feat.magnet_holes_properties(obj)
         baseplate_feat.center_cut_properties(obj)
 
-    def generate_gridfinity_shape(self, obj: fc.DocumentObject) -> Part.Shape:
+    def generate_gridfinity_shape(self, obj: feat.BaseplateRectObject) -> Part.Shape:
         layout = grid_initial_layout.make_rectangle_layout(obj)
 
         baseplate_outside_shape = utils.create_rounded_rectangle(
@@ -404,9 +414,10 @@ class MagnetBaseplate(FoundationGridfinity):
 
 
 class ScrewTogetherBaseplate(FoundationGridfinity):
-    def __init__(self, obj: fc.DocumentObject) -> None:
+    def __init__(self, obj: feat.BaseplateConnectedObject) -> None:
         super().__init__(obj)
 
+        feat.BaseplateConnectedObject.init_properties(obj)
         grid_initial_layout.rectangle_layout_properties(obj, baseplate_default=True)
         baseplate_feat.solid_shape_properties(obj)
         baseplate_feat.base_values_properties(obj)
@@ -415,7 +426,7 @@ class ScrewTogetherBaseplate(FoundationGridfinity):
         baseplate_feat.screw_bottom_chamfer_properties(obj)
         baseplate_feat.connection_holes_properties(obj)
 
-    def generate_gridfinity_shape(self, obj: fc.DocumentObject) -> Part.Shape:
+    def generate_gridfinity_shape(self, obj: feat.BaseplateConnectedObject) -> Part.Shape:
         layout = grid_initial_layout.make_rectangle_layout(obj)
 
         baseplate_outside_shape = utils.create_rounded_rectangle(
@@ -446,10 +457,11 @@ class ScrewTogetherBaseplate(FoundationGridfinity):
 class CustomBlankBin(FoundationGridfinity):
     """Gridfinity CustomBlankBin object."""
 
-    def __init__(self, obj: fc.DocumentObject, layout: list[list[bool]]) -> None:
+    def __init__(self, obj: feat.CustomBinBlankObject, layout: list[list[bool]]) -> None:
         super().__init__(obj)
         self.layout = layout
 
+        feat.CustomBinBlankObject.init_properties(obj)
         grid_initial_layout.custom_shape_layout_properties(obj, baseplate_default=False)
         feat.bin_solid_mid_section_properties(
             obj,
@@ -463,7 +475,7 @@ class CustomBlankBin(FoundationGridfinity):
 
         obj.Proxy = self
 
-    def generate_gridfinity_shape(self, obj: fc.DocumentObject) -> Part.Shape:
+    def generate_gridfinity_shape(self, obj: feat.CustomBinBlankObject) -> Part.Shape:
         """Generate BinBlank Shape."""
         ## calculated here
 
@@ -523,10 +535,11 @@ class CustomBlankBin(FoundationGridfinity):
 class CustomBinBase(FoundationGridfinity):
     """Gridfinity CustomBinBase object."""
 
-    def __init__(self, obj: fc.DocumentObject, layout: list[list[bool]]) -> None:
+    def __init__(self, obj: feat.CustomBinBlankObject, layout: list[list[bool]]) -> None:
         super().__init__(obj)
         self.layout = layout
 
+        feat.CustomBinBlankObject.init_properties(obj)
         grid_initial_layout.custom_shape_layout_properties(obj, baseplate_default=False)
         feat.bin_solid_mid_section_properties(
             obj,
@@ -540,7 +553,7 @@ class CustomBinBase(FoundationGridfinity):
 
         obj.Proxy = self
 
-    def generate_gridfinity_shape(self, obj: fc.DocumentObject) -> Part.Shape:
+    def generate_gridfinity_shape(self, obj: feat.CustomBinBlankObject) -> Part.Shape:
         """Generate BinBase Shape."""
         ## calculated here
         obj.BaseProfileHeight = (
@@ -599,10 +612,11 @@ class CustomBinBase(FoundationGridfinity):
 class CustomEcoBin(FoundationGridfinity):
     """Gridfinity CustomEcoBin object."""
 
-    def __init__(self, obj: fc.DocumentObject, layout: list[list[bool]]) -> None:
+    def __init__(self, obj: feat.CustomEcoBinObject, layout: list[list[bool]]) -> None:
         super().__init__(obj)
         self.layout = layout
 
+        feat.CustomEcoBinObject.init_properties(obj)
         grid_initial_layout.custom_shape_layout_properties(obj, baseplate_default=False)
         feat.bin_solid_mid_section_properties(
             obj,
@@ -612,13 +626,13 @@ class CustomEcoBin(FoundationGridfinity):
         feat.stacking_lip_properties(obj, stacking_lip_default=const.STACKING_LIP)
         feat.bin_bottom_holes_properties(obj, magnet_holes_default=False)
         feat.bin_base_values_properties(obj)
-        feat.label_shelf_properties(obj, label_style_default="Off")
+        feat.label_shelf_properties(obj, label_style_default=feat.LabelShelfStyleEnum.OFF)
         feat.eco_compartments_properties(obj)
         feat.scoop_properties(obj, scoop_default=False)
 
         obj.Proxy = self
 
-    def generate_gridfinity_shape(self, obj: fc.DocumentObject) -> Part.Shape:
+    def generate_gridfinity_shape(self, obj: feat.CustomEcoBinObject) -> Part.Shape:
         """Generate EcoBin Shape."""
         ## calculated here
 
@@ -683,7 +697,7 @@ class CustomEcoBin(FoundationGridfinity):
             scoop_constrained = scoop.common(compartments)
             fuse_total = fuse_total.fuse(scoop_constrained)
 
-        if obj.LabelShelfStyle != "Off":
+        if obj.LabelShelfStyle != feat.LabelShelfStyleEnum.OFF:
             label_shelf = feat.make_label_shelf(obj, "eco")
             label_shelf = label_shelf.cut(inside_wall_negative)
             fuse_total = fuse_total.fuse(label_shelf)
@@ -710,10 +724,11 @@ class CustomEcoBin(FoundationGridfinity):
 class CustomStorageBin(FoundationGridfinity):
     """Gridfinity CustomStorageBin object."""
 
-    def __init__(self, obj: fc.DocumentObject, layout: list[list[bool]]) -> None:
+    def __init__(self, obj: feat.CustomStorageBinObject, layout: list[list[bool]]) -> None:
         super().__init__(obj)
         self.layout = layout
 
+        feat.CustomStorageBinObject.init_properties(obj)
         grid_initial_layout.custom_shape_layout_properties(obj, baseplate_default=False)
         feat.bin_solid_mid_section_properties(
             obj,
@@ -724,14 +739,14 @@ class CustomStorageBin(FoundationGridfinity):
         feat.bin_bottom_holes_properties(obj, magnet_holes_default=const.MAGNET_HOLES)
         feat.bin_base_values_properties(obj)
         feat.compartments_properties(obj, x_div_default=0, y_div_default=0)
-        feat.label_shelf_properties(obj, label_style_default="Off")
+        feat.label_shelf_properties(obj, label_style_default=feat.LabelShelfStyleEnum.OFF)
         feat.scoop_properties(obj, scoop_default=False)
 
         obj.setExpression("UsableHeight", "TotalHeight - HeightUnitValue")
 
         obj.Proxy = self
 
-    def generate_gridfinity_shape(self, obj: fc.DocumentObject) -> Part.Shape:
+    def generate_gridfinity_shape(self, obj: feat.CustomStorageBinObject) -> Part.Shape:
         """Generate StorageBin Shape."""
         ## calculated here
         if obj.NonStandardHeight:
@@ -787,7 +802,7 @@ class CustomStorageBin(FoundationGridfinity):
             )
         outside_bin_solid = cut_outside_shape(obj, compartments_solid)
 
-        if obj.LabelShelfStyle != "Off":
+        if obj.LabelShelfStyle != feat.LabelShelfStyleEnum.OFF:
             label_shelf = feat.make_label_shelf(obj, "standard")
             label_shelf = label_shelf.cut(outside_bin_solid)
             fuse_total = fuse_total.fuse(label_shelf)
@@ -811,17 +826,18 @@ class CustomStorageBin(FoundationGridfinity):
 class CustomBaseplate(FoundationGridfinity):
     """Gridfinity CustomBaseplate object."""
 
-    def __init__(self, obj: fc.DocumentObject, layout: list[list[bool]]) -> None:
+    def __init__(self, obj: feat.CustomBaseplateObject, layout: list[list[bool]]) -> None:
         super().__init__(obj)
         self.layout = layout
 
+        feat.CustomBaseplateObject.init_properties(obj)
         grid_initial_layout.custom_shape_layout_properties(obj, baseplate_default=True)
         baseplate_feat.solid_shape_properties(obj)
         baseplate_feat.base_values_properties(obj)
 
         obj.Proxy = self
 
-    def generate_gridfinity_shape(self, obj: fc.DocumentObject) -> Part.Shape:
+    def generate_gridfinity_shape(self, obj: feat.CustomBaseplateObject) -> Part.Shape:
         """Generate Baseplate Shape."""
         ## calculated here
         obj.TotalHeight = obj.BaseProfileHeight
@@ -855,10 +871,11 @@ class CustomBaseplate(FoundationGridfinity):
 class CustomMagnetBaseplate(FoundationGridfinity):
     """Gridfinity CustomMagnetBaseplate object."""
 
-    def __init__(self, obj: fc.DocumentObject, layout: list[list[bool]]) -> None:
+    def __init__(self, obj: feat.CustomMagnetBaseplateObject, layout: list[list[bool]]) -> None:
         super().__init__(obj)
         self.layout = layout
 
+        feat.CustomMagnetBaseplateObject.init_properties(obj)
         grid_initial_layout.custom_shape_layout_properties(obj, baseplate_default=True)
         baseplate_feat.solid_shape_properties(obj)
         baseplate_feat.base_values_properties(obj)
@@ -867,7 +884,7 @@ class CustomMagnetBaseplate(FoundationGridfinity):
 
         obj.Proxy = self
 
-    def generate_gridfinity_shape(self, obj: fc.DocumentObject) -> Part.Shape:
+    def generate_gridfinity_shape(self, obj: feat.CustomMagnetBaseplateObject) -> Part.Shape:
         """Generate MagnetBaseplate Shape."""
         ## calculated here
         obj.TotalHeight = obj.BaseProfileHeight + obj.MagnetHoleDepth + obj.MagnetBase
@@ -903,10 +920,11 @@ class CustomMagnetBaseplate(FoundationGridfinity):
 class CustomScrewTogetherBaseplate(FoundationGridfinity):
     """Gridfinity CustomScrewTogetherBaseplate object."""
 
-    def __init__(self, obj: fc.DocumentObject, layout: list[list[bool]]) -> None:
+    def __init__(self, obj: feat.CustomBaseplateConnectedObject, layout: list[list[bool]]) -> None:
         super().__init__(obj)
         self.layout = layout
 
+        feat.CustomBaseplateConnectedObject.init_properties(obj)
         grid_initial_layout.custom_shape_layout_properties(obj, baseplate_default=True)
         baseplate_feat.solid_shape_properties(obj)
         baseplate_feat.base_values_properties(obj)
@@ -917,7 +935,7 @@ class CustomScrewTogetherBaseplate(FoundationGridfinity):
 
         obj.Proxy = self
 
-    def generate_gridfinity_shape(self, obj: fc.DocumentObject) -> Part.Shape:
+    def generate_gridfinity_shape(self, obj: feat.CustomBaseplateConnectedObject) -> Part.Shape:
         """Generate Screw Together Baseplate Shape."""
         ## calculated here
         obj.TotalHeight = obj.BaseProfileHeight + obj.BaseThickness
